@@ -8,6 +8,33 @@
 
 ## Terminology
 
+### Display Server: Wayland and X11
+
+| [Display Server 참고](http://en.wikipedia.org/wiki/Windowing_system#Display_server)
+
+- Display Server
+
+    - 운영체제, 하드웨어, GUI(Graphic User Interface) 애플리케이션 간의 입력 및 출력 처리를 담당하는 프로그램
+    - 화면을 나타내고 마우스나 키보드 입력을 프로그램에 전달하는 역할
+
+- X11 Server
+
+    - 리눅스와 유닉스 계열 운영체제에서 사용되는 전통적인 디스플레이 서버 프로토콜
+    - 클라이언트-서버 구조를 통해 화면 출력과 사용자 입력 처리
+    - 성능 최적화가 부족하고 보안성이 낮아 최근에는 Wayland로 대체되는 추세
+    - 동작방식
+        - 키보드/마우스 입력을 받아 프로그램(X 클라이언트)으로 전달
+        - 프로그램이 새로운 화면을 생성하면, 이를 X 서버가 받아서 화면에 표시
+
+- Wayland
+
+    - 기존의 X11이 비효율적인 점이 많아 개선하기 위해 나온 새로운 디스플레이 서버 프로토콜
+    - 클라이언트가 직접 프레임버퍼(화면에 출력할 데이터를 저장하는 공간)에 그릴 수 있도록 설계
+    - X11보다 보안이 강하고 성능 향상
+    - 동작 방식
+        - X11과 달리 별도의 컴포지터가 필요 없음
+        - 애플리케이션이 직접 화면 표시
+
 ### DNS (Domain Name System)
 
 - 개념
@@ -60,7 +87,42 @@
   4. DHCP Acknowledge
   - DHCP가 해당 IP 주소 할당하고 설정 정보 전달
 
-## Practice: Anydesk with WayLand
+## Trouble Shooting: Anydesk with WayLand
+
+### 문제 상황
+
+| [Anydesk Docs 참고](https://support.anydesk.com/knowledge/error-messages)
+
+서버와 클라이언트에 Anydesk 설치 후 접속 시 오류 발생
+
+- **"Remote display server is not supported (e.g. Wayland)"**
+
+- Anydesk는 x11을 기준으로 작동하기 때문에 wayland와 같은 다른 디스플레이 서버를 사용하는 경우 해당 오류 발생
+
+### 해결
+
+서버로 사용하는 Ubuntu 22.04는 기본 디스플레이 서버로 wayland 사용
+
+wayland를 종료시켜 x11을 사용하도록 함
+
+- 디스플레이 서버를 조회하기 위해 아래 명령어 실행
+        
+    ```shell
+    echo $XDG_SESSION_TYPE
+    ```
+        
+- wayland가 나타나는 경우 종료 후 재시작
+        
+    ```shell
+    #gdm 설정 파일 접근
+    sudo vi /etc/gdm3/custom.conf
+    ---
+    #wayland 사용하지 않도록 설정
+    WaylandEnable=false
+    ---
+    #gdm 재시작
+    sudo service gdm3 restart
+    ```
 
 ## Practice: Tailscale with SSH
 
