@@ -1,0 +1,27 @@
+name: Self-hosted Runner CI/CD
+
+on:
+  push:
+    branches:
+      - github-cicd
+    paths:
+      - 'week3/cicd/**'
+
+jobs:
+  build-and-deploy:
+    name: Build & Push Docker Image
+    runs-on: self-hosted  # self-hosted 러너 사용
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          cd 3week/cicd
+          pip install -r requirements.txt
