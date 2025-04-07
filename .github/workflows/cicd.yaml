@@ -94,3 +94,4 @@ jobs:
             echo "✅ App deployed and running on EC2"
         
           EOF
+          
