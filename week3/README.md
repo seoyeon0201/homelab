@@ -1,8 +1,16 @@
 ## Introduction
 
-- GitHub Actions
-    - CI/CD Tools 중 GitHub Actions가 Docker-in-Docker 문제가 발생하지 않도록 하며 간단히 구축 가능하여 채택
-    - CI/CD 파이프라인 구축을 통한 자동 빌드 및 자동 배포 목적
+- CI/CD 파이프라인 구축
+    - CI/CD 파이프라인 구축을 통한 이미지 자동 빌드 및 자동 배포 목적
+    - **Jenkins vs GitHub Actions**
+
+        - CI/CD Tools 중 GitHub Actions가 Docker-in-Docker 문제가 발생하지 않도록 함 → VM에 배포
+        - VM 배포 시 설정이 간단한 CI/CD Tools 선택 → GitHub Actions
+    - **GitHub-hosted Runner vs Self-hosted Runner**
+
+        - 비용, 유지 보수, 성능 측면에서 유리한 Self-hosted Runner 사용
+    
+        ⇒ GitHub Actions Self-hosted Runner 사용해 CI/CD 구축
 
 - SSH 
     - GitHub에 SSH Key 등록해 SSH 기반 인증 사용 목적
@@ -18,20 +26,22 @@
 > [Docker-in-Docker](https://itnext.io/docker-in-docker-521958d34efd)
 
 - 요구사항
-    - 성능과 보안에 유리하고 설정이 간단한 CI/CD 파이프라인 구축
-
-        ![alt text](image/image.png)
+    - 성능이 좋고 설정이 간단한 CI/CD 파이프라인 구축
 
 - 개요
     - Jenkins 파이프라인에서 Docker 명령어를 실행할 필요 존재하고, 일반적으로 container 환경에서 동작 
 
-    - Docker 환경에 container로 동작시키는 경우, Jenkins container 내부에서 Docker 명령어 실행해야 하므로 Docker container에서 Docker를 사용해야함 ⇒ Docker-in-Docker
+    - Docker 환경에 container로 동작시키는 경우, Jenkins container 내부에서 Docker 명령어 실행해야 하므로 Docker container에서 Docker를 사용해야함 
 
-    - 하지만 Docker-in-Docker는 Docker가 운영 체제에서 구현되는 방식과 관련해 많은 기술적 문제를 발생시켜 권장되지 않음 ⇒ Jenkins 대신 GitHub Actions 유리
+        ⇒ Docker-in-Docker
+
+    - 하지만 Docker-in-Docker는 Docker가 운영 체제에서 구현되는 방식과 관련해 많은 기술적 문제를 발생시켜 권장되지 않음 ⇒ 해결하기 위해 VM 환경에 운영 필요
+        - BUT VM에 Jenkins 사용 시 설정이 매우 복잡해 일반적으로 container 권장
 
 - DIND 구현 : Docker container에서 Docker 사용하는 방법
 
     1. [Best Practice] Host의 Docker Daemon 마운트
+
         - Docker container 내부에서 Host Docker Daemon 사용
         - container 내부에 Docker Daemon에 명령을 내리는 인터페이스인 “Docker Socket” 파일 마운트
             
@@ -75,25 +85,38 @@
 ### 2) GitHub Actions: Self-hosted Runner
 
 - 개요
-    - GitHub Actions에서 기본으로 제공하는 Runner가 아닌, 본인의 Docker container 내에 Runner를 띄워 CI/CD 작업 수행 가능
+
+    - 비용, 유지 보수, 성능 이슈로 GitHub Actions에서 기본으로 제공하는 GitHub-hosted Runner가 아닌 Self-hosted Runner를 사용해 CI/CD 작업 수행
 
     - Self-hosted Runner란, GitHub Actions에서 사용자가 지정하는 로컬 컴퓨팅 자원으로 빌드를 수행하도록 설정하는 기능
 
 - 기본 Runner vs Self-hosted Runner
-    ![alt text](image/image-1.png)
 
-    - Self-hosted Runner를 VM(홈서버)에 설치해 사용하는 경우 Docker-in-Docker 문제가 발생하지 않고 보안, 성능 측면에서 가장 유리 
+    - 기본 Runner는 VM에서 동작하고, Self-hosted Runner는 VM 또는 container 중 선택해 운영 가능
+    - GitHub-hosted Runner와 Self-hosted Runner를 VM(홈서버)에 설치해 사용하는 경우 Docker-in-Docker 문제가 발생하지 않음
+    - 비용
+        - GitHub-hosted Runner는 제한된 무료 실행 시간 이후 비용 발생
+        - Self-hosted Runner는 사용 비용 없고 서버 유지 비용만 부담
+    - 유지 보수
+        - GitHub-hosted Runner는 GitHub가 인프라 관리
+        - Self-hosted Runner는 사용자가 인프라 관리 및 유지 보수 가능
+    - 수행 시간
+        - GitHub-hosted Runner는 Job 실행 시마다 새로운 VM을 부팅하고 필요한 패키지를 모두 설치하는 과정을 거침
+        - Self-hosted Runner는 동일한 VM에서 동작하여 매번 패키지를 설치할 필요가 없음 
+        
+        →  GitHub-hosted Runner는 스토리지와 캐시가 제한적이지만, Self-hosted Runner는 로컬 캐시를 사용할 수 있어 속도 절감 효과 
+    
+    ⇒ Self-hosted Runner가 GitHub-hosted Runner에 비해 비용, 유지 보수, 성능 측면에서 유리 
 
 
 **❓Jenkins와 Self-hosted Runner를 container에서 동작하면 둘 다 docker-in-docker 문제가 발생하고, vm에서 동작하면 둘 다 docker-in-docker 문제가 발생하지 않는 것 아닌가요?**
 
-- Jenkins는 대체로 container로 돌리기 때문에 Docker-in-Docker 문제를 피할 수 없지만, GitHub Actions는 기본 Runner(VM)을 제공해 Docker-in-Docker 없이 Docker 작업 가능
-
-- 기본 Runner는 VM에서 동작하고, Self-hosted Runner는 VM 또는 container 중 선택 가능
+- Jenkins는 보통 container로 돌리기 때문에 Docker-in-Docker 문제를 피할 수 없지만, GitHub Actions는 GitHub-hosted Runner(VM) 또는 Self-hosted Runner를 VM 환경에 운영해 Docker-in-Docker 없이 Docker 작업 가능
 
 - Jenkins도 VM에 동작할 수 있지만, GitHub Actions에 비해 설정이 복잡
 
-- 본인은 VM에 Self-hosted Runner를 돌려 Docker-in-Docker의 성능 문제와 보안, 캐시 문제 해결
+
+    **⇒ 본인은 VM에 Self-hosted Runner를 돌려 Jenkins의 Docker-in-Docker의 성능 문제를 해결하고, GitHub-hosted Runner의 비용과 성능 문제 보안**
 
 
 ### SSH
@@ -237,3 +260,112 @@ chmod 600 ~/.ssh/id_ed25519_github
 ![alt text](image/image-9.png)
 
 ## Practice: GitHub Actions
+
+### 1. [서버&GitHub] Self-hosted Runner 생성 및 실행
+
+1. 서버의 아키텍처 확인
+
+    ```
+    dpkg --print-architecture
+    #amd64 출력
+    ```
+
+2. Github Repository > Settings > Actions-Runners에서 Self-hosted Runner 생성
+
+3. 서버에 코드 붙여넣어 생성
+    1. Download
+        
+        ```bash
+        # Create a folder
+        $ mkdir actions-runner && cd actions-runner
+
+        # Download the latest runner package
+        $ curl -o actions-runner-linux-x64-2.323.0.tar.gz -L https://github.com/actions/runner/releases/download/v2.323.0/actions-runner-linux-x64-2.323.0.tar.gz
+        
+        # Optional: Validate the hash
+        $ echo "0dbc9bf5a58620fc52cb6cc0448abcca964a8d74b5f39773b7afcad9ab691e19  actions-runner-linux-x64-2.323.0.tar.gz" | shasum -a 256 -c
+        
+        # Extract the installer
+        $ tar xzf ./actions-runner-linux-x64-2.323.0.tar.gz
+        ```
+        
+    2. Configure → 실행
+        
+        ```bash
+        # Create the runner and start the configuration experience
+        $ ./config.sh --url https://github.com/seoyeon0201/homelab --token A55URHKIZAEMP2FEWGLTJ4TH6E6NW
+        
+        # Last step, run it!
+        $ ./run.sh
+        ```
+        
+        ![alt text](image/image-10.png)
+        
+    3. 추후 Workflow에 아래와 같이 작성
+        
+        ```bash
+        # Use this YAML in your workflow file for each job
+        runs-on: self-hosted
+        ```
+
+### 2. [서버] Runner 돌리는 용도로 시스템 User 생성
+
+**User란,**
+
+사용자 User란 컴퓨터 시스템에 로그인할 수 있는 계정
+
+root 계정은 시스템 전체를 통제할 수 있기에 적절한 권한만을 부여한 User 생성해 GitHub Actions Runner 동작
+
+![alt text](image/image-11.png)
+
+
+Self-hosted Runner에서 `sudo` 명령어 사용 시 매번 비밀번호를 입력해야 함
+
+- 비밀번호 입력하지 않아도 되도록 설정
+
+- `sudo visudo` 수정
+    ```
+    seoyeon ALL=(ALL) NOPASSWD:ALL
+    ```
+
+
+### 3. [GitHub&AWS] CI/CD 환경 설정
+
+1. 배포 환경 설정
+
+- AWS EC2
+- AWS Security Group
+
+2. GitHub Secrets
+
+- Docker 관련 정보
+- AWS 관련 정보
+
+    ![alt text](image/image-13.png)
+
+### 4. [GitHub] CICD 파이프라인 구축
+
+파일 구조 
+
+![alt text](image/image-12.png)
+
+코드 작성
+
+- cicd.yaml
+- app.py
+- requirements.txt
+- Dockerfile
+
+### 5. 결과
+
+- cicd.yaml 또는 week3/cicd 코드에 변경 사항 존재 시 CI/CD workflows 동작
+    
+    - 빌드 및 배포 자동화를 통해 휴먼 에러 방지
+
+- Jenkins와 비교
+    - VM 환경에 간단히 CICD 구축 가능 
+
+- GitHub-hosted Runner와 비교
+    - Self-hosted Runner가 캐시를 저장해 성능 향상
+    
+    ![alt text](image/image-14.png)
