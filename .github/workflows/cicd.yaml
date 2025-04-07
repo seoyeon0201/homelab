@@ -89,7 +89,7 @@ jobs:
             sudo docker rm flask-app || true
 
             sudo docker pull ${{ secrets.DOCKER_USERNAME }}/selfhosted-flask-app:latest
-            sudo docker run -d --name flask-app -p 80:5000 ${{ secrets.DOCKER_USERNAME }}/selfhosted-flask-app:latest
+            sudo docker run -d --name flask-app -p 80:8080 ${{ secrets.DOCKER_USERNAME }}/selfhosted-flask-app:latest
             echo "✅ App deployed and running on EC2"
         
           EOF
