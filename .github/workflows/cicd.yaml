@@ -79,7 +79,7 @@ jobs:
       - name: Deploy Docker Container on EC2
         run: |
           echo "🔍 Connecting to EC2 and deploying Docker container..."
-          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/ec2-key.pem
+          echo "${{ secrets.AWS_EC2_SSH_KEY }}" > ~/.ssh/ec2-key.pem
           chmod 600 ~/.ssh/ec2-key.pem
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/ec2-key.pem ubuntu@${{ secrets.AWS_EC2_PUBLIC_IP }} << 'EOF'
           
@@ -94,4 +94,3 @@ jobs:
             echo "✅ App deployed and running on EC2"
         
           EOF
-          
