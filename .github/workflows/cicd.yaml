@@ -16,13 +16,49 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+      
+      - name: Check and Install Python
+        run: |
+          echo "🔍 Checking Python..."
+          if ! command -v python3 &> /dev/null; then
+            echo "⚠️ Python not found. Installing Python 3.9..."
+            sudo apt update
+            sudo apt install -y python3 python3-pip python3-venv
+          else
+            echo "✅ Python version: $(python3 --version)"
+          fi
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-
+          echo "🔍 Checking pip..."
+          if ! command -v pip3 &> /dev/null; then
+            echo "⚠️ pip not found. Installing pip..."
+            sudo apt install -y python3-pip
+          else
+            echo "✅ pip version: $(pip3 --version)"
+          fi
+      
       - name: Install dependencies
         run: |
           cd week3/cicd
           pip install -r requirements.txt
+
+      - name: Check and Install Docker
+        run: |
+          echo "🔍 Checking Docker..."
+          if ! command -v docker &> /dev/null; then
+            echo "⚠️ Docker not found. Installing..."
+            curl -fsSL https://get.docker.com | sudo sh
+          else
+            echo "✅ Docker is already installed: $(docker --version)"
+          fi
+          
+      - name: Log in to DockerHub
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+      - name: Build Docker image
+        run: |
+          cd week3/cicd
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/selfhosted-flask-app:latest .
+
+      - name: Push Docker image to DockerHub
+        run: |
+          docker push ${{ secrets.DOCKER_USERNAME }}/selfhosted-flask-app:latest
