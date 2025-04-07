@@ -1,0 +1,95 @@
+name: Self-hosted Runner CI/CD
+
+on:
+  push:
+    branches:
+      - github-cicd
+    paths:
+      - 'week3/cicd/**'
+      - '.github/workflows/**'
+
+jobs:
+  build-and-deploy:
+    name: Build & Push Docker Image
+    runs-on: self-hosted  # self-hosted 러너 사용
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Check and Install Python on Self-Hosted Runner
+        run: |
+          echo "🔍 Checking Python..."
+          if ! command -v python3 &> /dev/null; then
+            echo "⚠️ Python not found. Installing Python 3.9..."
+            sudo apt update
+            sudo apt install -y python3 python3-pip python3-venv
+          else
+            echo "✅ Python version: $(python3 --version)"
+          fi
+
+          echo "🔍 Checking pip..."
+          if ! command -v pip3 &> /dev/null; then
+            echo "⚠️ pip not found. Installing pip..."
+            sudo apt install -y python3-pip
+          else
+            echo "✅ pip version: $(pip3 --version)"
+          fi
+      
+      - name: Install dependencies on Self-Hosted Runner
+        run: |
+          cd week3/cicd
+          pip install -r requirements.txt
+
+      - name: Check and Install Docker on Self-Hosted Runner
+        run: |
+          echo "🔍 Checking Docker..."
+          if ! command -v docker &> /dev/null; then
+            echo "⚠️ Docker not found. Installing..."
+            curl -fsSL https://get.docker.com | sudo sh
+          else
+            echo "✅ Docker is already installed: $(docker --version)"
+          fi
+          
+      - name: Log in to DockerHub
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | sudo docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+      - name: Build Docker image and Push Docker image to DockerHub
+        run: |
+          cd week3/cicd
+          sudo docker build -t ${{ secrets.DOCKER_USERNAME }}/selfhosted-flask-app:latest .
+          sudo docker push ${{ secrets.DOCKER_USERNAME }}/selfhosted-flask-app:latest
+
+  deploy-to-ec2:
+    name: Deploy to EC2
+    runs-on: self-hosted
+    needs: build-and-deploy
+    
+    steps:
+
+      - name: Deploy Docker Container on EC2
+        run: |
+          echo "🔍 Connecting to EC2 and deploying Docker container..."
+          echo "${{ secrets.AWS_EC2_SSH_KEY }}" > ~/.ssh/ec2-key.pem
+          chmod 600 ~/.ssh/ec2-key.pem
+          
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/ec2-key.pem ubuntu@${{ secrets.AWS_EC2_PUBLIC_IP }} << 'EOF'
+            echo "🔍 Checking Docker..."
+            if ! command -v docker &> /dev/null; then
+              echo "⚠️ Docker not found. Installing..."
+              curl -fsSL https://get.docker.com | sudo sh
+            else
+              echo "✅ Docker is already installed: $(docker --version)"
+            fi
+
+            echo "✅ Connected to EC2"
+            echo "${{ secrets.DOCKER_PASSWORD }}" | sudo docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+            sudo docker stop flask-app || true
+            sudo docker rm flask-app || true
+
+            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/selfhosted-flask-app:latest
+            sudo docker run -d --name flask-app -p 80:8080 ${{ secrets.DOCKER_USERNAME }}/selfhosted-flask-app:latest
+            echo "✅ App deployed and running on EC2"
+        
+          EOF
