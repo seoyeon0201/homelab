@@ -63,7 +63,7 @@ jobs:
   deploy-to-ec2:
     name: Deploy to EC2
     runs-on: self-hosted
-    needs: build-and-push
+    needs: build-and-deploy
     
     steps:
       - name: Check and Install Docker on EC2
